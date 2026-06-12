@@ -2960,7 +2960,15 @@ void Builder::createConstVariable(Id type, const char* name, Id constant, bool i
     if (emitNonSemanticShaderDebugInfo) {
         Id debugType = getDebugType(type);
         if (isGlobal) {
-            createDebugGlobalVariable(debugType, name, constant);
+            // NonSemantic.Shader.DebugInfo.100 restricts the Variable
+            // operand of DebugGlobalVariable to OpVariable, OpConstant
+            // (scalar) or DebugInfoNone. Composite / spec-constant
+            // initialisers (incl. synthesised gl_WorkGroupSize) hit
+            // OpConstantComposite / OpSpecConstantComposite which are
+            // not in the allowed set; pass DebugInfoNone instead so
+            // spirv-val accepts the module.
+            const Id variableOperand = (getOpCode(constant) == Op::OpConstant) ? constant : makeDebugInfoNone();
+            createDebugGlobalVariable(debugType, name, variableOperand);
         }
         else {
             auto debugLocal = createDebugLocalVariable(debugType, name);
