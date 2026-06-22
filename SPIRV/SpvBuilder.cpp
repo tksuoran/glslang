@@ -1231,8 +1231,18 @@ Id Builder::makeMemberDebugType(Id const memberType, StructMemberDebugInfo const
     type->addIdOperand(debugTypeLoc.debugTypeOverride != 0 ? debugTypeLoc.debugTypeOverride
                                                            : getDebugType(memberType)); // type id
     type->addIdOperand(makeDebugSource(currentFileId));                            // source id
-    type->addIdOperand(makeUintConstant(debugTypeLoc.line));   // line id TODO: currentLine is always zero
-    type->addIdOperand(makeUintConstant(debugTypeLoc.column)); // TODO: column id
+    // glslang does not track struct-member source locations relative to the
+    // DebugSource text it embeds: debugTypeLoc.line / .column are positions in the
+    // original (pre-preprocessing) source and can fall outside the embedded
+    // DebugSource - the line can exceed its line count and the column can exceed
+    // the referenced line's length. spirv-val rejects both (SPIRV-Tools
+    // ValidateOperandDebugSource, VUID-VkShaderModuleCreateInfo-pCode-08737;
+    // glslang#3862). Emit line 0 / column 0 ("no location"), matching every other
+    // NonSemantic.Shader.DebugInfo instruction glslang produces (DebugTypeComposite,
+    // DebugFunction, DebugLine, ... all use 0). Restore real values once glslang
+    // tracks member locations against the emitted DebugSource.
+    type->addIdOperand(makeUintConstant(0));                   // line id   (see note; glslang#3862)
+    type->addIdOperand(makeUintConstant(0));                   // column id (see note; glslang#3862)
     type->addIdOperand(makeUintConstant(0));                   // TODO: offset id
     type->addIdOperand(makeUintConstant(0));                   // TODO: size id
     type->addIdOperand(makeUintConstant(NonSemanticShaderDebugInfoFlagIsPublic)); // flags id
